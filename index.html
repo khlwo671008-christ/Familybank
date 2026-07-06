@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#22405E">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>家庭帳務備忘</title>
+<style>
+  :root{
+    --paper:#F6F4EE; --card:#fff; --rule:#E2E6EC;
+    --ink:#22405E; --soft:#68798C; --faint:#93A1B0;
+    --blue:#2E5F8C; --bluew:#EBF1F7;
+    --red:#B23F2B; --redw:#F9ECE8;
+    --green:#3A7A4C; --greenw:#EAF3EC;
+    --amber:#9A6A1F; --amberw:#F7F0E1;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+       background:var(--paper);color:var(--ink);min-height:100vh}
+  /* ── 鎖定畫面 ── */
+  #lock{position:fixed;inset:0;background:var(--paper);display:flex;align-items:center;justify-content:center;z-index:100;padding:24px}
+  .lockcard{width:100%;max-width:340px;background:var(--card);border:1px solid var(--rule);border-radius:16px;
+            padding:28px 22px;box-shadow:0 4px 16px rgba(34,64,94,.08);text-align:center}
+  .lockcard .eyebrow{font-size:11px;letter-spacing:5px;color:var(--faint);font-weight:600}
+  .lockcard h1{font-size:22px;font-weight:800;letter-spacing:2px;margin:4px 0 18px}
+  #pw{width:100%;padding:12px;font:inherit;font-size:18px;text-align:center;letter-spacing:4px;
+      border:1.5px solid var(--rule);border-radius:10px;outline:none;color:var(--ink);background:var(--paper)}
+  #pw:focus{border-color:var(--blue)}
+  #unlock{width:100%;margin-top:12px;padding:12px;font:inherit;font-size:15px;font-weight:700;letter-spacing:2px;
+          border:none;border-radius:10px;background:var(--ink);color:#fff;cursor:pointer}
+  #unlock:disabled{opacity:.6}
+  .rememberrow{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;font-size:13px;color:var(--soft)}
+  #lockerr{color:var(--red);font-size:13px;margin-top:12px;min-height:18px}
+  #locknote{font-size:11.5px;color:var(--faint);margin-top:14px;line-height:1.5}
+  /* ── App ── */
+  #app{display:none}
+  .top{position:sticky;top:0;z-index:10;background:var(--paper);border-bottom:1px solid var(--rule);
+       padding:14px 18px 10px;display:flex;justify-content:space-between;align-items:flex-end}
+  .top .eyebrow{font-size:11px;letter-spacing:5px;color:var(--faint);font-weight:600}
+  .top h1{font-size:21px;font-weight:800;letter-spacing:2px}
+  #lockbtn{border:none;background:none;font:inherit;font-size:12px;color:var(--faint);padding:4px 6px;cursor:pointer}
+  main{max-width:560px;margin:0 auto;padding:4px 16px 100px}
+  .sec{margin:22px 2px 10px}
+  .sec .sub{font-size:12px;letter-spacing:4px;color:var(--faint);font-weight:600}
+  .sec .t{font-size:19px;font-weight:700;letter-spacing:1px}
+  .card{background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:14px;
+        box-shadow:0 1px 2px rgba(34,64,94,.04);margin-bottom:10px}
+  .stamp{border-radius:4px;padding:1px 7px;font-size:11px;font-weight:600;white-space:nowrap;display:inline-block}
+  .s-blue{color:var(--blue);background:var(--bluew);border:1px solid rgba(46,95,140,.2)}
+  .s-green{color:var(--green);background:var(--greenw);border:1px solid rgba(58,122,76,.2)}
+  .s-red{color:var(--red);background:var(--redw);border:1px solid rgba(178,63,43,.2)}
+  .s-amber{color:var(--amber);background:var(--amberw);border:1px solid rgba(154,106,31,.2)}
+  .num,.mono{font-variant-numeric:tabular-nums}
+  .rail{position:relative;padding-left:52px}
+  .rail::before{content:"";position:absolute;left:21px;top:6px;bottom:6px;width:2px;background:var(--rule);border-radius:2px}
+  .day{position:relative;margin-bottom:14px}
+  .daynum{position:absolute;left:-48px;top:2px;width:36px;height:36px;border-radius:10px;
+          background:var(--card);border:1.5px solid rgba(46,95,140,.35);
+          display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .daynum b{font-size:15px;line-height:1}
+  .daynum span{font-size:8px;letter-spacing:1px}
+  .day.past .daynum{background:var(--paper);border-color:var(--rule);color:var(--faint)}
+  .day.past .card{opacity:.55}
+  .day.today .daynum{background:var(--ink);border-color:var(--ink);color:#fff}
+  .item{padding:9px 12px;margin-bottom:6px}
+  .item .row{display:flex;align-items:center;gap:8px}
+  .item .name{font-size:14px;font-weight:600}
+  .item .sub2{font-size:12.5px;color:var(--soft);margin-top:3px}
+  .alert{background:var(--redw);border-color:rgba(178,63,43,.3)}
+  .alert h4{font-size:13px;color:var(--red);margin-bottom:6px}
+  .alert div{font-size:13px;margin-bottom:3px}
+  .line{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;font-size:13.5px}
+  .line+.line{border-top:1px dashed var(--rule)}
+  .chk{display:flex;width:100%;align-items:center;gap:10px;padding:9px 2px;background:none;border:none;
+       text-align:left;font:inherit;color:inherit;cursor:pointer}
+  .chk+.chk{border-top:1px dashed var(--rule)}
+  .box{width:20px;height:20px;border-radius:6px;flex-shrink:0;border:1.5px solid var(--faint);
+       display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px}
+  .chk.on .box{background:var(--green);border-color:var(--green)}
+  .chk .d{width:42px;font-size:12.5px;color:var(--faint)}
+  .chk .nm{flex:1;font-size:13.5px}
+  .chk.on .nm,.chk.on .amt{color:var(--faint);text-decoration:line-through}
+  .chk .note{display:block;font-size:11px;color:var(--amber);text-decoration:none}
+  .chk .amt{font-size:13.5px;font-weight:600}
+  .hint{font-size:11.5px;color:var(--faint);margin:8px 4px}
+  input.bal{flex:1;border:none;border-bottom:1.5px solid var(--rule);background:transparent;outline:none;
+            font:inherit;font-size:16px;font-weight:600;color:var(--ink);padding:4px 2px;min-width:0}
+  nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);
+      border-top:1px solid var(--rule);display:flex;justify-content:space-around;
+      padding:6px 4px calc(10px + env(safe-area-inset-bottom))}
+  nav button{background:none;border:none;font:inherit;display:flex;flex-direction:column;align-items:center;
+             gap:2px;color:var(--faint);padding:4px 10px;cursor:pointer}
+  nav button .ic{font-size:18px;filter:grayscale(1) opacity(.6)}
+  nav button.on{color:var(--ink)}
+  nav button.on .ic{filter:none}
+  nav button span{font-size:11px;font-weight:500}
+  nav button.on span{font-weight:700}
+  .page{display:none}.page.on{display:block}
+</style>
+</head>
+<body>
+
+<!-- 鎖定畫面 -->
+<div id="lock">
+  <div class="lockcard">
+    <div class="eyebrow">HOUSEHOLD LEDGER</div>
+    <h1>家庭帳務備忘</h1>
+    <input id="pw" type="password" placeholder="輸入密碼" autocomplete="current-password">
+    <button id="unlock">解鎖</button>
+    <label class="rememberrow"><input type="checkbox" id="remember">在這支手機記住我</label>
+    <div id="lockerr"></div>
+    <div id="locknote">資料以 AES-256 加密封存，<br>密碼不會傳送到任何伺服器。</div>
+  </div>
+</div>
+
+<!-- App 本體 -->
+<div id="app">
+  <div class="top">
+    <div>
+      <div class="eyebrow">HOUSEHOLD LEDGER</div>
+      <h1>家庭帳務備忘</h1>
+    </div>
+    <button id="lockbtn">🔒 鎖定</button>
+  </div>
+  <main>
+    <div id="p-month" class="page on"></div>
+    <div id="p-loans" class="page"></div>
+    <div id="p-bills" class="page"></div>
+    <div id="p-rent" class="page"></div>
+    <div id="p-acct" class="page"></div>
+  </main>
+  <nav id="nav">
+    <button data-p="month" class="on"><span class="ic">📅</span><span>本月</span></button>
+    <button data-p="loans"><span class="ic">🏠</span><span>貸款</span></button>
+    <button data-p="bills"><span class="ic">💡</span><span>繳費</span></button>
+    <button data-p="rent"><span class="ic">🔑</span><span>收租</span></button>
+    <button data-p="acct"><span class="ic">🏦</span><span>帳戶</span></button>
+  </nav>
+</div>
+
+<script>
+/* ═══════════ 加密層 ═══════════ */
+const ENC={salt:"X1czFjI3DBRkdciemo59IA==",iv:"Zyha9x63+v6AfQKU",ct:"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",iter:600000};
+const b64d=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const b64e=b=>btoa(String.fromCharCode(...new Uint8Array(b)));
+let KEY=null,DATA=null;
+
+async function deriveKey(pw){
+  const km=await crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    {name:"PBKDF2",salt:b64d(ENC.salt),iterations:ENC.iter,hash:"SHA-256"},
+    km,{name:"AES-GCM",length:256},true,["encrypt","decrypt"]);
+}
+async function tryDecrypt(key){
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64d(ENC.iv)},key,b64d(ENC.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+const ls={
+  get(k){try{return localStorage.getItem(k)}catch(e){return null}},
+  set(k,v){try{localStorage.setItem(k,v)}catch(e){}},
+  del(k){try{localStorage.removeItem(k)}catch(e){}}
+};
+/* 本機資料也加密後才存 */
+async function encSave(k,obj){
+  if(!KEY)return;
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},KEY,new TextEncoder().encode(JSON.stringify(obj)));
+  ls.set(k,b64e(iv)+"."+b64e(ct));
+}
+async function encLoad(k){
+  const raw=ls.get(k);if(!raw||!KEY)return null;
+  try{
+    const [iv,ct]=raw.split(".");
+    const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64d(iv)},KEY,b64d(ct));
+    return JSON.parse(new TextDecoder().decode(pt));
+  }catch(e){return null}
+}
+
+/* ═══════════ 解鎖流程 ═══════════ */
+const $=id=>document.getElementById(id);
+async function unlockWith(key){
+  DATA=await tryDecrypt(key);  // 密碼錯會 throw
+  KEY=key;
+  rentUtil=(await encLoad("hl-rent"))||DATA.rentUtilDefault;
+  balances=(await encLoad("hl-bal"))||DATA.balDefault;
+  $("lock").style.display="none";
+  $("app").style.display="block";
+  renderAll();
+}
+$("unlock").onclick=async()=>{
+  const pw=$("pw").value;
+  if(!pw)return;
+  $("unlock").disabled=true;$("lockerr").textContent="";
+  try{
+    const key=await deriveKey(pw);
+    await unlockWith(key);
+    if($("remember").checked){
+      const raw=await crypto.subtle.exportKey("raw",key);
+      ls.set("hl-key",b64e(raw));
+    }
+  }catch(e){
+    $("lockerr").textContent="密碼不對，再試一次";
+    $("pw").value="";$("pw").focus();
+  }
+  $("unlock").disabled=false;
+};
+$("pw").addEventListener("keydown",e=>{if(e.key==="Enter")$("unlock").click()});
+$("lockbtn") && ($("lockbtn").onclick=()=>{
+  ls.del("hl-key");
+  location.reload();
+});
+/* 記住我：靜默解鎖 */
+(async()=>{
+  const saved=ls.get("hl-key");
+  if(!saved)return;
+  try{
+    const key=await crypto.subtle.importKey("raw",b64d(saved),{name:"AES-GCM"},true,["encrypt","decrypt"]);
+    await unlockWith(key);
+  }catch(e){ls.del("hl-key")}
+})();
+
+/* ═══════════ App 邏輯 ═══════════ */
+const fmt=n=>n==null?"—":Number(n).toLocaleString("zh-TW");
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let rentUtil=[],balances=[];
+const now=new Date(),curDay=now.getDate(),curMonth=now.getMonth()+1;
+const sec=(sub,t)=>`<div class="sec"><div class="sub">${sub}</div><div class="t">${t}</div></div>`;
+
+function renderMonth(){
+  const items=[];
+  DATA.cards.forEach(c=>items.push({day:c.day,kind:"卡費",tone:"blue",title:`${c.card}（${c.who}）`,sub:`${c.acct} 帳戶扣繳`}));
+  DATA.loans.forEach(l=>items.push({day:l.day,kind:"貸款",tone:"amber",title:`${l.prop?l.prop+" ":""}${l.name}`,sub:l.pay?`$${fmt(l.pay)}`:""}));
+  DATA.transfers.forEach(t=>items.push({day:t.day,kind:"轉帳",tone:"blue",title:`${t.from} → ${t.to}`,sub:`$${fmt(t.amt)} ${t.what}`}));
+  items.push({day:15,kind:"收租",tone:"green",title:`${DATA.rent.prop}收租`,sub:`$${fmt(DATA.rent.monthly)}（15–16 號）`});
+  const byDay={};items.forEach(it=>(byDay[it.day]=byDay[it.day]||[]).push(it));
+  const days=Object.keys(byDay).map(Number).sort((a,b)=>a-b);
+  const tax=DATA.taxes.filter(t=>t.month===curMonth);
+  const exp=DATA.transfers.filter(t=>t.until&&t.until.startsWith(`${now.getFullYear()}/${curMonth}/`));
+  let alert="";
+  if(tax.length||exp.length){
+    alert=`<div class="card alert"><h4>本月留意</h4>`+
+      tax.map(t=>`<div>${curMonth} 月是「${t.name}」繳納月${t.note?`（${t.note}）`:""}</div>`).join("")+
+      exp.map(t=>`<div>自動轉帳「${t.from}→${t.to} ${t.what}」授權 ${t.until} 到期，記得續約</div>`).join("")+`</div>`;
+  }
+  const rail=days.map(d=>{
+    const cls=d===curDay?"today":d<curDay?"past":"";
+    return `<div class="day ${cls}"><div class="daynum"><b>${d}</b><span>號</span></div>`+
+      byDay[d].map(it=>`<div class="card item"><div class="row">
+        <span class="stamp s-${it.tone}">${it.kind}</span><span class="name">${it.title}</span></div>
+        ${it.sub?`<div class="sub2 num">${it.sub}</div>`:""}</div>`).join("")+`</div>`;
+  }).join("");
+  $("p-month").innerHTML=sec(`${now.getFullYear()} 年 ${curMonth} 月`,"本月扣款日程")+alert+`<div class="rail">${rail}</div>`;
+}
+
+function renderLoans(){
+  const rem=DATA.family.total-DATA.family.repaid.reduce((s,r)=>s+r.amt,0);
+  const cards=DATA.loans.map(l=>`<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:baseline">
+      <div style="font-size:15px;font-weight:700">${l.prop?`<span style="color:var(--blue)">${l.prop}　</span>`:""}${l.name}</div>
+      <span class="stamp s-blue">每月 ${l.day} 號</span></div>
+    <div style="display:flex;gap:18px;margin-top:8px;font-size:13px;color:var(--soft);flex-wrap:wrap" class="num">
+      <span>本金 ${l.principal}</span><span>利率 ${l.rate}</span>
+      ${l.pay?`<span style="color:var(--ink);font-weight:600">月付 $${fmt(l.pay)}</span>`:""}
+      ${l.end?`<span>至 ${l.end}</span>`:""}</div>
+    ${l.note?`<div style="margin-top:8px;font-size:12.5px;color:var(--red);background:var(--redw);border-radius:6px;padding:5px 9px">${l.note}</div>`:""}
+  </div>`).join("");
+  const fam=`<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+      <span style="font-size:13px;color:var(--soft)" class="num">總額 $${fmt(DATA.family.total)}</span>
+      <span style="font-size:15px;font-weight:700" class="num">尚欠 $${fmt(rem)}</span></div>`+
+    DATA.family.repaid.map(r=>`<div class="line num"><span>${r.when} 還 $${fmt(r.amt)}</span><span style="color:var(--soft)">${r.how}</span></div>`).join("")+`</div>`;
+  $("p-loans").innerHTML=sec("LOANS","房貸與信貸")+cards+sec("FAMILY",`個人借貸（${DATA.family.from}）`)+fam;
+}
+
+function renderBills(){
+  const u=DATA.util.map(g=>`<div class="card">
+    <div style="font-size:14px;font-weight:700;color:var(--blue);letter-spacing:2px;margin-bottom:4px">${g.type}</div>`+
+    g.rows.map(r=>`<div class="line">
+      <span style="font-weight:600;min-width:62px">${r.prop}</span>
+      <span style="color:var(--soft);flex:1" class="mono">${r.acct}</span>
+      ${r.pay?`<span style="color:var(--green);font-size:12px;white-space:nowrap">${r.pay}</span>`:""}</div>`).join("")+`</div>`).join("");
+  const tax=`<div class="card">`+DATA.taxes.map(t=>{
+    const nowM=t.month===curMonth;
+    return `<div class="line" style="align-items:center">
+      <span style="width:44px;text-align:center;font-weight:700;font-size:14px;border-radius:8px;padding:4px 0;
+        color:${nowM?"#fff":"var(--blue)"};background:${nowM?"var(--red)":"var(--bluew)"}">${t.month}月</span>
+      <span style="flex:1"><span style="font-weight:600">${t.name}</span>${nowM?`<span style="color:var(--red);font-size:12px">　← 本月</span>`:""}
+        ${t.note?`<span style="display:block;font-size:12px;color:var(--soft)">${t.note}</span>`:""}</span></div>`;
+  }).join("")+`</div>`;
+  $("p-bills").innerHTML=sec("UTILITIES","水電瓦斯網路 · 帳號對照")+u+sec("TAX CALENDAR","稅金年曆")+tax;
+}
+
+function renderRent(){
+  const out=rentUtil.filter(x=>!x.got).reduce((s,x)=>s+x.amt,0);
+  const info=`<div class="card">
+    <div style="font-size:14px;font-weight:600" class="num">月租 $${fmt(DATA.rent.monthly)}</div>
+    <div style="font-size:12.5px;color:var(--soft);margin-top:4px">${DATA.rent.deposit}</div>
+    <div style="font-size:12.5px;color:var(--soft)">${DATA.rent.period}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">`+
+    DATA.rent.log.map(d=>`<span class="stamp s-green">${d} ✓</span>`).join("")+`</div></div>`;
+  const total=`<div class="card" style="background:${out?"var(--redw)":"var(--greenw)"};border-color:${out?"rgba(178,63,43,.3)":"rgba(58,122,76,.3)"}">
+    <div style="font-size:13px;color:var(--soft)">未收合計</div>
+    <div class="num" style="font-size:24px;font-weight:800;color:${out?"var(--red)":"var(--green)"}">$${fmt(out)}</div></div>`;
+  const list=`<div class="card">`+rentUtil.map(x=>`
+    <button class="chk ${x.got?"on":""}" data-id="${x.id}">
+      <span class="box">${x.got?"✓":""}</span>
+      <span class="d mono">${x.date}</span>
+      <span class="nm">${x.item}${x.note?`<span class="note">${esc(x.note)}</span>`:""}</span>
+      <span class="amt num">$${fmt(x.amt)}</span>
+    </button>`).join("")+`</div>
+    <div class="hint">點一下項目即可切換「已收／未收」，會自動記住（加密後存在這支手機）。</div>`;
+  const el=$("p-rent");
+  el.innerHTML=sec(DATA.rent.prop,"出租收款")+info+sec("TENANT UTILITIES","水電瓦斯代收")+total+list;
+  el.querySelectorAll(".chk").forEach(b=>b.onclick=()=>{
+    const it=rentUtil.find(x=>x.id===b.dataset.id);
+    it.got=!it.got;
+    encSave("hl-rent",rentUtil);
+    renderRent();
+  });
+}
+
+function renderAcct(){
+  const rows=balances.map(b=>`<div class="line" style="gap:8px">
+    <span style="min-width:76px">
+      <input class="bname" data-id="${b.id}" value="${esc(b.bank)}" placeholder="銀行名稱"
+        style="border:none;background:transparent;outline:none;font:inherit;font-size:14px;font-weight:700;color:var(--ink);width:76px">
+      ${b.note?`<span style="display:block;font-size:11px;color:var(--faint)">${b.note}</span>`:""}</span>
+    <span style="color:var(--faint)">$</span>
+    <input class="bal num" inputmode="numeric" placeholder="輸入餘額" data-id="${b.id}" value="${esc(b.amt)}">
+    <button class="bdel" data-id="${b.id}" style="border:none;background:none;color:var(--faint);font-size:16px;padding:2px 4px;cursor:pointer">✕</button>
+  </div>`).join("");
+  const sum=balances.reduce((s,b)=>s+(Number(b.amt)||0),0);
+  const byDay={};DATA.cards.forEach(c=>(byDay[c.day]=byDay[c.day]||[]).push(c));
+  const days=Object.keys(byDay).map(Number).sort((a,b)=>a-b);
+  const map=days.map(d=>`<div class="card" style="display:flex;gap:12px;align-items:flex-start">
+    <div style="min-width:44px;text-align:center;background:var(--bluew);border-radius:8px;padding:6px 0;color:var(--blue);font-weight:700;font-size:14px">${d}號</div>
+    <div style="flex:1">`+byDay[d].map(c=>`<div class="line">
+      <span style="font-weight:600">${c.card} <span style="color:var(--faint);font-weight:400">（${c.who}）</span></span>
+      <span style="color:var(--soft)">${c.acct} 扣繳</span></div>`).join("")+`</div></div>`).join("");
+  const el=$("p-acct");
+  el.innerHTML=sec("BALANCES","銀行帳戶餘額")+
+    `<div class="card">${rows}
+      <button id="baladd" style="width:100%;margin-top:8px;padding:8px;border:1.5px dashed var(--rule);border-radius:8px;
+        background:none;color:var(--blue);font:inherit;font-size:13px;font-weight:600;cursor:pointer">＋ 新增帳戶</button>
+      <div style="margin-top:10px;padding-top:10px;border-top:1.5px solid var(--rule);display:flex;justify-content:space-between;font-size:14px">
+        <span style="color:var(--soft)">合計</span><b class="num" id="balsum">$${fmt(sum)}</b></div></div>
+     <div class="hint">餘額加密後只存在這支手機。點「✕」可刪除帳戶。</div>`+
+    sec("AUTO-DEBIT MAP","信用卡 ↔ 扣繳帳戶")+map;
+  const saveBal=()=>encSave("hl-bal",balances);
+  el.querySelectorAll("input.bal").forEach(inp=>inp.oninput=()=>{
+    const b=balances.find(x=>x.id===inp.dataset.id);
+    b.amt=inp.value.replace(/[^\d]/g,"");
+    if(inp.value!==b.amt)inp.value=b.amt;
+    saveBal();
+    $("balsum").textContent="$"+fmt(balances.reduce((s,x)=>s+(Number(x.amt)||0),0));
+  });
+  el.querySelectorAll("input.bname").forEach(inp=>inp.oninput=()=>{
+    balances.find(x=>x.id===inp.dataset.id).bank=inp.value;saveBal();
+  });
+  el.querySelectorAll(".bdel").forEach(btn=>btn.onclick=()=>{
+    const b=balances.find(x=>x.id===btn.dataset.id);
+    if(!confirm(`刪除「${b.bank||"未命名"}」這個帳戶？`))return;
+    balances=balances.filter(x=>x.id!==btn.dataset.id);
+    saveBal();renderAcct();
+  });
+  $("baladd").onclick=()=>{
+    balances.push({id:"b"+Date.now(),bank:"",note:"",amt:""});
+    saveBal();renderAcct();
+    const inputs=el.querySelectorAll("input.bname");
+    inputs[inputs.length-1].focus();
+  };
+}
+
+function renderAll(){renderMonth();renderLoans();renderBills();renderRent();renderAcct()}
+
+$("nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));
+  document.querySelectorAll(".page").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");
+  $("p-"+b.dataset.p).classList.add("on");
+  window.scrollTo(0,0);
+});
+
+/* PWA */
+if("serviceWorker" in navigator && location.protocol==="https:"){
+  navigator.serviceWorker.register("./sw.js").catch(()=>{});
+}
+</script>
+</body>
+</html>
